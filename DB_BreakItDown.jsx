@@ -25,28 +25,38 @@ Limitations:
 There are a lot.
 */
 
+// Linear interpolation between two values (a, b) based on a proportion between the two (n)
 function lin(a, b, n) {
   return (1 - n) * a + n * b;
 }
 
+// Creates the breakdown keyframe on each selected property.
 function breakDown(lyr, midpoint, snap){
+    //get and loop through selected props
     var props = lyr.selectedProperties;
     for (var k=0; k< props.length; k++){
         prop = props[k];
+        //check that there are only two keys selected.
         if (prop.selectedKeys.length === 2) {
+            //get values and times of start and end keys
             keyStart = prop.selectedKeys[0];
             keyStartTime = prop.keyTime(keyStart);
             keyStartVal = prop.keyValue(keyStart);
             keyEnd = prop.selectedKeys[1];
             keyEndTime = prop.keyTime(keyEnd);
             keyEndVal = prop.keyValue(keyEnd);
+            //get the mid point of the values
             keyMidVal = (keyStartVal + keyEndVal)/2;
+            //use lin() to get the desired location of the breakdown
             keyMidTime = lin(keyStartTime,keyEndTime,midpoint);
             keyMidFrame = keyMidTime*frameRate;
+            //Lin() could result in non whole frame values. Check if snapping is
+            //turned on to correct this.
             if (snap==true){
               keyMidFrame = Math.round(keyMidFrame);
               keyMidTime = keyMidFrame/frameRate;
             }
+            //create the break down key.
             prop.setValueAtTime(keyMidTime,keyMidVal);
 
         } else {
@@ -55,6 +65,8 @@ function breakDown(lyr, midpoint, snap){
     }
 }
 
+// The main control function that loops through all the selected layers and runs
+// breakDown().
 function tweenMain(midPoint,snap){
   currentComp = app.project.activeItem;
   selLyrs = currentComp.selectedLayers;
@@ -71,7 +83,7 @@ function tweenMain(midPoint,snap){
   }
 }
 
-
+// UI Resource string
 var resString =
 "group{orientation:'column',alignment:['fill','fill']\
   incrementBtnsGrp:Group{orientation:'column',alignChildren:['center','top'],\
@@ -101,6 +113,7 @@ var resString =
   },\
 }";
 
+// Create UI
 function createUserInterface (thisObj, userInterfaceString, scriptName){
   var pal = (thisObj instanceof Panel) ? thisObj : new Window("palette", scriptName, undefined, {resizeable: true});
   if (pal == null) return pal;
@@ -119,6 +132,8 @@ function createUserInterface (thisObj, userInterfaceString, scriptName){
 };
 
 var UI = createUserInterface(this,resString, "DB Break It Down");
+
+//UI Events
 UI.incrementBtnsGrp.row1.btn_1.onClick = function() {
   var snap = UI.mainBtnGrp.row4.check_snap.value;
   tweenMain(.1,snap);
