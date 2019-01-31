@@ -114,7 +114,7 @@ var resString =
   },\
   mainBtnGrp:Group{orientation:'column',alignChildren:['center','top'],\
     row4:Group{orientation:'row',\
-      btn_Twn:Button{text:'Tween!',preferredSize:[60,25]},\
+      btn_Twn:Button{text:'Breakdown!',preferredSize:[75,25]},\
     },\
   },\
 }";
