@@ -26,7 +26,8 @@ be a value close to the start key, .5 would be right in the middle, .9 would be
 near the end key value.
 
 Limitations:
-There are a lot.
+This has only been tested on transform properties. I'm sure there are a lot of
+other problems lurking.
 
 Version 1.2 Updates:
 The time of the breakdown is now determined by the location of the playhead.
@@ -45,24 +46,25 @@ function breakDown(lyr, time, val){
     for (var k=0; k< props.length; k++){
         prop = props[k];
         //check that there are only two keys selected.
-        if (prop.selectedKeys.length === 2) {
-            //get values and times of start and end keys
-            keyStart = prop.selectedKeys[0];
-            keyStartTime = prop.keyTime(keyStart);
-            keyStartVal = prop.keyValue(keyStart);
-            keyEnd = prop.selectedKeys[1];
-            keyEndTime = prop.keyTime(keyEnd);
-            keyEndVal = prop.keyValue(keyEnd);
-            keyMidVal = lin(keyStartVal,keyEndVal,val);
-            //create the break down key.
-            if(keyStartTime < time && keyEndTime > time){
-              prop.setValueAtTime(time,keyMidVal);
-            } else {
-              alert("Place the Playhead between selected keys where you want the breakdown to be.")
-            }
-
-        } else {
-            alert("Select 2 keys per property to breakdown.");
+        if (prop.propertyType === PropertyType.PROPERTY){
+          if (prop.selectedKeys.length === 2) {
+              //get values and times of start and end keys
+              keyStart = prop.selectedKeys[0];
+              keyStartTime = prop.keyTime(keyStart);
+              keyStartVal = prop.keyValue(keyStart);
+              keyEnd = prop.selectedKeys[1];
+              keyEndTime = prop.keyTime(keyEnd);
+              keyEndVal = prop.keyValue(keyEnd);
+              keyMidVal = lin(keyStartVal,keyEndVal,val);
+              //create the break down key.
+              if(keyStartTime < time && keyEndTime > time){
+                prop.setValueAtTime(time,keyMidVal);
+              } else {
+                alert("Place the Playhead between selected keys where you want the breakdown to be.")
+              }
+          } else {
+              alert("Select 2 keys per property to breakdown.");
+          }
         }
     }
 }
