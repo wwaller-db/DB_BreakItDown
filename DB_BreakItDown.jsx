@@ -5,7 +5,7 @@ Copyright (c) 2019 Dripsblack, LLC. (William M. Waller II). All rights reserved.
 www.dripsblack.com
 
 Name: DB_BreakItDown
-Version: 2.0
+Version: 1.2
 
 Description:
 This idea was inspired by Justin Barrett's tweenMachine script for Maya. I've
@@ -19,15 +19,17 @@ to happen on frame 15 (25% of the time between frame 10 and 30). This would mean
 your animation would move quickly to its midpoint and then slow into the second
 pose. Manually you'd have to find the exact midpoint of your motion, create
 keyframes on all the associated properties, then move the keys back to frame 15.
-With BreakItDown, you just have to select your keys and hit the .25 button! Done.
+
+Now, just select two keys, place the playhead where you want the break down to be
+placed, and set the slider to the value proportion you want and hit tween. .1 would
+be a value close to the start key, .5 would be right in the middle, .9 would be
+near the end key value.
 
 Limitations:
 There are a lot.
 
-Version 2 Updates:
-V1 created the breakdown's value at the exact midpoint between the start and
-end keys. This isn't the function I wanted. The idea here is to add sliders and
-buttons for time AND value.
+Version 1.2 Updates:
+The time of the breakdown is now determined by the location of the playhead.
 
 */
 
@@ -37,7 +39,7 @@ function lin(a, b, n) {
 }
 
 // Creates the breakdown keyframe on each selected property.
-function breakDown(lyr, time, val, snap){
+function breakDown(lyr, time, val){
     //get and loop through selected props
     var props = lyr.selectedProperties;
     for (var k=0; k< props.length; k++){
@@ -52,18 +54,12 @@ function breakDown(lyr, time, val, snap){
             keyEndTime = prop.keyTime(keyEnd);
             keyEndVal = prop.keyValue(keyEnd);
             keyMidVal = lin(keyStartVal,keyEndVal,val);
-            //keyMidVal = (keyStartVal + keyEndVal)/2;
-            //use lin() to get the desired location of the breakdown
-            keyMidTime = lin(keyStartTime,keyEndTime,time);
-            keyMidFrame = keyMidTime*frameRate;
-            //Lin() could result in non whole frame values. Check if snapping is
-            //turned on to correct this.
-            if (snap==true){
-              keyMidFrame = Math.round(keyMidFrame);
-              keyMidTime = keyMidFrame/frameRate;
-            }
             //create the break down key.
-            prop.setValueAtTime(keyMidTime,keyMidVal);
+            if(keyStartTime < time && keyEndTime > time){
+              prop.setValueAtTime(time,keyMidVal);
+            } else {
+              alert("Place the Playhead between selected keys where you want the breakdown to be.")
+            }
 
         } else {
             alert("Select 2 keys per property to breakdown.");
@@ -73,7 +69,7 @@ function breakDown(lyr, time, val, snap){
 
 // The main control function that loops through all the selected layers and runs
 // breakDown().
-function tweenMain(time,val,snap){
+function tweenMain(val){
   currentComp = app.project.activeItem;
   selLyrs = currentComp.selectedLayers;
   currTime =currentComp.time;
@@ -83,7 +79,7 @@ function tweenMain(time,val,snap){
   } else {
     app.beginUndoGroup("Tween")
     for (var i=0; i< selLyrs.length; i++){
-      breakDown(selLyrs[i],time,val,snap);
+      breakDown(selLyrs[i],currTime,val);
     }
     app.endUndoGroup;
   }
@@ -92,28 +88,6 @@ function tweenMain(time,val,snap){
 // UI Resource string
 var resString =
 "group{orientation:'column',alignment:['fill','fill'],\
-  panel_time:Panel{orientation:'column', alignment:['fill','fill'],\
-    label_time:StaticText{text:'Time'},\
-    incrementBtnsGrp:Group{orientation:'column',alignChildren:['center','top'],\
-      row1:Group{orientation:'row',\
-        btn_1:Button{text:'.10',preferredSize:[30,25]},\
-        btn_25:Button{text:'.25',preferredSize:[30,25]},\
-        btn_5:Button{text:'.50',preferredSize:[30,25]},\
-        btn_75:Button{text:'.75',preferredSize:[30,25]},\
-        btn_9:Button{text:'.90',preferredSize:[30,25]},\
-      },\
-    },\
-    sliderGrp:Group{orientation:'column',alignChildren:['center','top'],\
-      row2:Group{orientation:'row',\
-        slider_1:Slider{text:'my slider', value:.5, minvalue:.1, maxvalue:.9,preferredSize:[180,25]},\
-      },\
-    },\
-    sliderValGrp:Group{orientation:'column',alignChildren:['center','top'],\
-      row3:Group{orientation:'row',\
-        sliderVal:StaticText{text:'0.500', },\
-      },\
-    },\
-  },\
   panel_value:Panel{orientation:'column', alignment:['fill','fill'],\
     label_value:StaticText{text:'Value'},\
     incrementBtnsGrp:Group{orientation:'column',alignChildren:['center','top'],\
@@ -139,7 +113,6 @@ var resString =
   mainBtnGrp:Group{orientation:'column',alignChildren:['center','top'],\
     row4:Group{orientation:'row',\
       btn_Twn:Button{text:'Tween!',preferredSize:[60,25]},\
-      check_snap:Checkbox{text:'Snap', value:true, helpTip:'Turn on to snap your breakdown to a whole frame.', preferredSize:[60,25]},\
     },\
   },\
 }";
@@ -163,33 +136,9 @@ function createUserInterface (thisObj, userInterfaceString, scriptName){
 };
 
 var UI = createUserInterface(this,resString, "DB Break It Down");
-var uiTime = UI.panel_time;
 var uiVal = UI.panel_value;
 
 //UI Events
-
-//Time
-uiTime.incrementBtnsGrp.row1.btn_1.onClick = function() {
-  uiTime.sliderValGrp.row3.sliderVal.text=0.100;
-  uiTime.sliderGrp.row2.slider_1.value=.100;
-};
-uiTime.incrementBtnsGrp.row1.btn_25.onClick = function() {
-  uiTime.sliderValGrp.row3.sliderVal.text=0.250;
-  uiTime.sliderGrp.row2.slider_1.value=.250;
-};
-uiTime.incrementBtnsGrp.row1.btn_5.onClick = function() {
-  uiTime.sliderValGrp.row3.sliderVal.text=0.500;
-  uiTime.sliderGrp.row2.slider_1.value=.500;
-};
-uiTime.incrementBtnsGrp.row1.btn_75.onClick = function() {
-  uiTime.sliderValGrp.row3.sliderVal.text=0.750;
-  uiTime.sliderGrp.row2.slider_1.value=.750;
-};
-uiTime.incrementBtnsGrp.row1.btn_9.onClick = function() {
-  uiTime.sliderValGrp.row3.sliderVal.text=0.900;
-  uiTime.sliderGrp.row2.slider_1.value=.900;
-};
-uiTime.sliderGrp.row2.slider_1.onChanging = uiTime.sliderGrp.row2.slider_1.onChange =function (){uiTime.sliderValGrp.row3.sliderVal.text = this.value};
 
 //Value
 uiVal.incrementBtnsGrp.row1.btn_1.onClick = function() {
@@ -215,8 +164,6 @@ uiVal.incrementBtnsGrp.row1.btn_9.onClick = function() {
 uiVal.sliderGrp.row2.slider_1.onChanging = uiVal.sliderGrp.row2.slider_1.onChange =function (){uiVal.sliderValGrp.row3.sliderVal.text = this.value};
 
 UI.mainBtnGrp.row4.btn_Twn.onClick = function(){
-  var time = uiTime.sliderGrp.row2.slider_1.value;
   var val = uiVal.sliderGrp.row2.slider_1.value;
-  var snap = UI.mainBtnGrp.row4.check_snap.value;
-  tweenMain(time,val,snap);
+  tweenMain(val);
 };
