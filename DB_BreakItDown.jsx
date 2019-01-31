@@ -5,7 +5,7 @@ Copyright (c) 2019 Dripsblack, LLC. (William M. Waller II). All rights reserved.
 www.dripsblack.com
 
 Name: DB_BreakItDown
-Version: 1.0
+Version: 2.0
 
 Description:
 This idea was inspired by Justin Barrett's tweenMachine script for Maya. I've
@@ -23,6 +23,12 @@ With BreakItDown, you just have to select your keys and hit the .25 button! Done
 
 Limitations:
 There are a lot.
+
+Version 2 Updates:
+V1 created the breakdown's value at the exact midpoint between the start and
+end keys. This isn't the function I wanted. The idea here is to add sliders and
+buttons for time AND value.
+
 */
 
 // Linear interpolation between two values (a, b) based on a proportion between the two (n)
@@ -31,7 +37,7 @@ function lin(a, b, n) {
 }
 
 // Creates the breakdown keyframe on each selected property.
-function breakDown(lyr, midpoint, snap){
+function breakDown(lyr, time, val, snap){
     //get and loop through selected props
     var props = lyr.selectedProperties;
     for (var k=0; k< props.length; k++){
@@ -45,10 +51,10 @@ function breakDown(lyr, midpoint, snap){
             keyEnd = prop.selectedKeys[1];
             keyEndTime = prop.keyTime(keyEnd);
             keyEndVal = prop.keyValue(keyEnd);
-            //get the mid point of the values
-            keyMidVal = (keyStartVal + keyEndVal)/2;
+            keyMidVal = lin(keyStartVal,keyEndVal,val);
+            //keyMidVal = (keyStartVal + keyEndVal)/2;
             //use lin() to get the desired location of the breakdown
-            keyMidTime = lin(keyStartTime,keyEndTime,midpoint);
+            keyMidTime = lin(keyStartTime,keyEndTime,time);
             keyMidFrame = keyMidTime*frameRate;
             //Lin() could result in non whole frame values. Check if snapping is
             //turned on to correct this.
@@ -67,7 +73,7 @@ function breakDown(lyr, midpoint, snap){
 
 // The main control function that loops through all the selected layers and runs
 // breakDown().
-function tweenMain(midPoint,snap){
+function tweenMain(time,val,snap){
   currentComp = app.project.activeItem;
   selLyrs = currentComp.selectedLayers;
   currTime =currentComp.time;
@@ -77,7 +83,7 @@ function tweenMain(midPoint,snap){
   } else {
     app.beginUndoGroup("Tween")
     for (var i=0; i< selLyrs.length; i++){
-      breakDown(selLyrs[i],midPoint,snap);
+      breakDown(selLyrs[i],time,val,snap);
     }
     app.endUndoGroup;
   }
@@ -85,24 +91,49 @@ function tweenMain(midPoint,snap){
 
 // UI Resource string
 var resString =
-"group{orientation:'column',alignment:['fill','fill']\
-  incrementBtnsGrp:Group{orientation:'column',alignChildren:['center','top'],\
-    row1:Group{orientation:'row',\
-      btn_1:Button{text:'.10',preferredSize:[30,25]},\
-      btn_25:Button{text:'.25',preferredSize:[30,25]},\
-      btn_5:Button{text:'.50',preferredSize:[30,25]},\
-      btn_75:Button{text:'.75',preferredSize:[30,25]},\
-      btn_9:Button{text:'.90',preferredSize:[30,25]},\
+"group{orientation:'column',alignment:['fill','fill'],\
+  panel_time:Panel{orientation:'column', alignment:['fill','fill'],\
+    label_time:StaticText{text:'Time'},\
+    incrementBtnsGrp:Group{orientation:'column',alignChildren:['center','top'],\
+      row1:Group{orientation:'row',\
+        btn_1:Button{text:'.10',preferredSize:[30,25]},\
+        btn_25:Button{text:'.25',preferredSize:[30,25]},\
+        btn_5:Button{text:'.50',preferredSize:[30,25]},\
+        btn_75:Button{text:'.75',preferredSize:[30,25]},\
+        btn_9:Button{text:'.90',preferredSize:[30,25]},\
+      },\
+    },\
+    sliderGrp:Group{orientation:'column',alignChildren:['center','top'],\
+      row2:Group{orientation:'row',\
+        slider_1:Slider{text:'my slider', value:.5, minvalue:.1, maxvalue:.9,preferredSize:[180,25]},\
+      },\
+    },\
+    sliderValGrp:Group{orientation:'column',alignChildren:['center','top'],\
+      row3:Group{orientation:'row',\
+        sliderVal:StaticText{text:'0.500', },\
+      },\
     },\
   },\
-  sliderGrp:Group{orientation:'column',alignChildren:['center','top'],\
-    row2:Group{orientation:'row',\
-      slider_1:Slider{text:'my slider', value:.5, minvalue:.1, maxvalue:.9,preferredSize:[180,25]},\
+  panel_value:Panel{orientation:'column', alignment:['fill','fill'],\
+    label_value:StaticText{text:'Value'},\
+    incrementBtnsGrp:Group{orientation:'column',alignChildren:['center','top'],\
+      row1:Group{orientation:'row',\
+        btn_1:Button{text:'.10',preferredSize:[30,25]},\
+        btn_25:Button{text:'.25',preferredSize:[30,25]},\
+        btn_5:Button{text:'.50',preferredSize:[30,25]},\
+        btn_75:Button{text:'.75',preferredSize:[30,25]},\
+        btn_9:Button{text:'.90',preferredSize:[30,25]},\
+      },\
     },\
-  },\
-  sliderValGrp:Group{orientation:'column',alignChildren:['center','top'],\
-    row3:Group{orientation:'row',\
-      sliderVal:StaticText{text:'0.500', },\
+    sliderGrp:Group{orientation:'column',alignChildren:['center','top'],\
+      row2:Group{orientation:'row',\
+        slider_1:Slider{text:'my slider', value:.5, minvalue:.1, maxvalue:.9,preferredSize:[180,25]},\
+      },\
+    },\
+    sliderValGrp:Group{orientation:'column',alignChildren:['center','top'],\
+      row3:Group{orientation:'row',\
+        sliderVal:StaticText{text:'0.500', },\
+      },\
     },\
   },\
   mainBtnGrp:Group{orientation:'column',alignChildren:['center','top'],\
@@ -132,41 +163,60 @@ function createUserInterface (thisObj, userInterfaceString, scriptName){
 };
 
 var UI = createUserInterface(this,resString, "DB Break It Down");
+var uiTime = UI.panel_time;
+var uiVal = UI.panel_value;
 
 //UI Events
-UI.incrementBtnsGrp.row1.btn_1.onClick = function() {
-  var snap = UI.mainBtnGrp.row4.check_snap.value;
-  tweenMain(.1,snap);
-  UI.sliderValGrp.row3.sliderVal.text=0.100;
-  UI.sliderGrp.row2.slider_1.value=.100;
+
+//Time
+uiTime.incrementBtnsGrp.row1.btn_1.onClick = function() {
+  uiTime.sliderValGrp.row3.sliderVal.text=0.100;
+  uiTime.sliderGrp.row2.slider_1.value=.100;
 };
-UI.incrementBtnsGrp.row1.btn_25.onClick = function() {
-  var snap = UI.mainBtnGrp.row4.check_snap.value;
-  tweenMain(.25,snap);
-  UI.sliderValGrp.row3.sliderVal.text=0.250;
-  UI.sliderGrp.row2.slider_1.value=.250;
+uiTime.incrementBtnsGrp.row1.btn_25.onClick = function() {
+  uiTime.sliderValGrp.row3.sliderVal.text=0.250;
+  uiTime.sliderGrp.row2.slider_1.value=.250;
 };
-UI.incrementBtnsGrp.row1.btn_5.onClick = function() {
-  var snap = UI.mainBtnGrp.row4.check_snap.value;
-  tweenMain(.5,snap);
-  UI.sliderValGrp.row3.sliderVal.text=0.500;
-  UI.sliderGrp.row2.slider_1.value=.500;
+uiTime.incrementBtnsGrp.row1.btn_5.onClick = function() {
+  uiTime.sliderValGrp.row3.sliderVal.text=0.500;
+  uiTime.sliderGrp.row2.slider_1.value=.500;
 };
-UI.incrementBtnsGrp.row1.btn_75.onClick = function() {
-  var snap = UI.mainBtnGrp.row4.check_snap.value;
-  tweenMain(.75,snap);
-  UI.sliderValGrp.row3.sliderVal.text=0.750;
-  UI.sliderGrp.row2.slider_1.value=.750;
+uiTime.incrementBtnsGrp.row1.btn_75.onClick = function() {
+  uiTime.sliderValGrp.row3.sliderVal.text=0.750;
+  uiTime.sliderGrp.row2.slider_1.value=.750;
 };
-UI.incrementBtnsGrp.row1.btn_9.onClick = function() {
-  var snap = UI.mainBtnGrp.row4.check_snap.value;
-  tweenMain(.9,snap);
-  UI.sliderValGrp.row3.sliderVal.text=0.900;
-  UI.sliderGrp.row2.slider_1.value=.900;
+uiTime.incrementBtnsGrp.row1.btn_9.onClick = function() {
+  uiTime.sliderValGrp.row3.sliderVal.text=0.900;
+  uiTime.sliderGrp.row2.slider_1.value=.900;
 };
-UI.sliderGrp.row2.slider_1.onChanging = UI.sliderGrp.row2.slider_1.onChange =function (){UI.sliderValGrp.row3.sliderVal.text = this.value};
+uiTime.sliderGrp.row2.slider_1.onChanging = uiTime.sliderGrp.row2.slider_1.onChange =function (){uiTime.sliderValGrp.row3.sliderVal.text = this.value};
+
+//Value
+uiVal.incrementBtnsGrp.row1.btn_1.onClick = function() {
+  uiVal.sliderValGrp.row3.sliderVal.text=0.100;
+  uiVal.sliderGrp.row2.slider_1.value=.100;
+};
+uiVal.incrementBtnsGrp.row1.btn_25.onClick = function() {
+  uiVal.sliderValGrp.row3.sliderVal.text=0.250;
+  uiVal.sliderGrp.row2.slider_1.value=.250;
+};
+uiVal.incrementBtnsGrp.row1.btn_5.onClick = function() {
+  uiVal.sliderValGrp.row3.sliderVal.text=0.500;
+  uiVal.sliderGrp.row2.slider_1.value=.500;
+};
+uiVal.incrementBtnsGrp.row1.btn_75.onClick = function() {
+  uiVal.sliderValGrp.row3.sliderVal.text=0.750;
+  uiVal.sliderGrp.row2.slider_1.value=.750;
+};
+uiVal.incrementBtnsGrp.row1.btn_9.onClick = function() {
+  uiVal.sliderValGrp.row3.sliderVal.text=0.900;
+  uiVal.sliderGrp.row2.slider_1.value=.900;
+};
+uiVal.sliderGrp.row2.slider_1.onChanging = uiVal.sliderGrp.row2.slider_1.onChange =function (){uiVal.sliderValGrp.row3.sliderVal.text = this.value};
+
 UI.mainBtnGrp.row4.btn_Twn.onClick = function(){
-  var midPoint = UI.sliderGrp.row2.slider_1.value;
+  var time = uiTime.sliderGrp.row2.slider_1.value;
+  var val = uiVal.sliderGrp.row2.slider_1.value;
   var snap = UI.mainBtnGrp.row4.check_snap.value;
-  tweenMain(midPoint,snap);
+  tweenMain(time,val,snap);
 };
